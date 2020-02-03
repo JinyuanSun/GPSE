@@ -11,3 +11,5 @@ In the post-genomic era, genome mining has been one of the most powerful tools l
 
 The accumulation of sequences ensures us unlimited biomineral and the development of structure-related computational methods endue us powerful tools to mine more effectively and completely.
 
+##### Notice:  
+This script is now for experts because you need to prepare all the prerequisites by yourself and edit the code depending on your system. We are going to build a web server and make a user-friendly release.
