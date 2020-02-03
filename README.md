@@ -1,3 +1,3 @@
 # GASSER
 Genome scAle Substrate Specific Enzyme pRediction
-![pic1](https://github.com/JinyuanSun/GASSER/blob/master/GASSER_workflow.pdf)
+![pic1](https://raw.githubusercontent.com/JinyuanSun/GASSER/master/GASSER_workflow.pdf)
