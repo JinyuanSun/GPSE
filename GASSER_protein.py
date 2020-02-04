@@ -11,35 +11,40 @@ print("""
         #######################################################
         
         """)
+# srtucture_prediction
 import os
 import argparse
 
 parser = argparse.ArgumentParser(
     description="""GASSER: Genome scAle Substrate Specific Enzyme pRediction""",
     usage='python3 GASSER.py proteins.fasta ligand.pdb')
-parser.add_argument(
-    "input",
-    help=
-    "input a seqence in fasta format and we highly suggest that you make the head linesimple",
-    type=str)
-parser.add_argument("ligand", help="ligand or substrate in pdb", type=str)
+parser.add_argument("input",
+                    help="input a seqence in fasta format and we highly suggest that you make the head linesimple",
+                    type=str)
+parser.add_argument("ligand", 
+                    help="ligand or substrate in pdb", type=str)
 #parser.add_argument("filetype", help="the input file type, DNA or AA"
 #,type=str)
-parser.add_argument(
-    "-nos",
-    help=
-    "Max Number Of Structures you wish to be predicted for each sequence, defult is 1",
-    type=int,
-    default=1)
+parser.add_argument("EC_number",
+                    help="the EC_number in form of x_x_x (e.g. 3_1_1 for 3.1.1. carboxylic-ester hydrolase)",
+                    type=str)
+
+parser.add_argument("-nos",
+                    help="Max Number Of Structures you wish to be predicted for each sequence, defult is 1",
+                    type=int,
+                    default=1)
 parser.add_argument("-nt",
                     help="Number of Threads used to run BLAST, default is 1",
                     type=int,
                     default=32)
-parser.add_argument(
-    "-ic",
-    help="the Identity Cutoff for structure prediction, default is 30",
-    type=int,
-    default=30)
+parser.add_argument("-evalue",
+                    help="E-Value cutoff for structure template, default is 1e-3",
+                    type=str,
+                    default=str(1e-3))
+parser.add_argument("-ic",
+                    help="the Identity Cutoff for structure prediction, default is 30",
+                    type=int,
+                    default=30)
 
 args = parser.parse_args()
 
@@ -49,6 +54,8 @@ ligand = args.ligand
 nos = args.nos
 nt = args.nt
 ic = args.ic
+EC_number = args.EC_number
+evalue = args.evalue
 """
 print(str(nos),str(nt),(ic))
 try:
@@ -81,8 +88,8 @@ def blast_pdb(query_file_name, nos, nt, ic):
     #blastsearch
     blastout = os.popen(
         "psiblast -query " + query_file_name +
-        " -db ../database/pdbaa/pdbaa -outfmt 6 -num_threads " + str(nt) +
-        " -evalue 1e-5")
+        " -db ~/GASSER/database/pdbaa/pdbaa -outfmt 6 -num_threads " +
+        str(nt) + " -evalue "+str(evalue))
     #split blastout into list
     try:
         blastout = blastout.read()[:-2].split("\n")
@@ -92,8 +99,8 @@ def blast_pdb(query_file_name, nos, nt, ic):
                 pdb = line.split("\t")[1]
                 if identity > ic:
                     #download pdb templates
-                    os.system("wget https://files.rcsb.org/download/" +
-                              pdb.split("_")[0] + ".pdb")
+                    #os.system("wget https://files.rcsb.org/download/" +
+                    #pdb.split("_")[0] + ".pdb")
                     target_lst.append(pdb)
         if len(blastout) > nos:
             blastout = blastout[0:nos]
@@ -101,8 +108,8 @@ def blast_pdb(query_file_name, nos, nt, ic):
                 identity = float(line.split("\t")[2])
                 pdb = line.split("\t")[1]
                 if identity > ic:
-                    os.system("wget https://files.rcsb.org/download/" +
-                              pdb.split("_")[0] + ".pdb")
+                    #os.system("wget https://files.rcsb.org/download/" +
+                    #pdb.split("_")[0] + ".pdb")
                     target_lst.append(pdb)
         return target_lst
     except IndexError:
@@ -128,7 +135,7 @@ def generate_seq(
     return head
 
 
-def generate_align2d(query_file_name, target_code):
+def generate_align2d(query_file_name, target_code, head):
     target_name = target_code.split("_")[0]
     chain = target_code.split("_")[1]
     with open("align2d.py", "w+") as f:
@@ -232,46 +239,183 @@ def docking(receptor, ligand):
                 with open(
                         receptor.replace(".pdb", "") + "_pocket" + rank + "_" +
                         ligand.replace(".pdb", ".out"), "w+") as dockout:
-                    dockout.write(receptor + "_pocket" + " " + rank +
-                                  " docking:\nmode\taffinity (kcal/mol)\trmsd")
+                    dockout.write(
+                        receptor + "_pocket" + " " + rank +
+                        " docking:\nmode\taffinity (kcal/mol)\trmsd\n")
                     for x in vina_out:
                         xlst = x.split()
+                        print(xlst)
                         if float(xlst[1]) < -4:
                             dockout.write("\t".join(str(a) for a in xlst))
+                            dockout.write("\n")
                 dockout.close()
         except ValueError:
             continue
 
 
 #receptor = head + ".B99990001.pdb"
-seqdic = maindic(infile)
-for query_name in seqdic:
+
+
+def run_(query_name):
+    start_path = os.getcwd()
     query_file_name = query_name.replace(">", "") + ".fasta"
+    dir_name = query_name.replace(">", "")
+    #make a new dir for files
+    os.system("mkdir " + dir_name)
+    #go to the new dir
+    os.chdir(dir_name)
     #write the sequence in fasta format
     with open(query_file_name, "w+") as seqfile:
         seqfile.write(query_name)
         seqfile.write("\n")
         seqfile.write(seqdic[query_name])
     seqfile.close()
-    #print(query_name+"\n"+seqdic[query_name],file=seqfile)
-    target_lst = blast_pdb(query_file_name, nos, nt, ic)
-    if target_lst == "No match":
-        print(str(query_name) + "No match")
+    #run BLAST for template target_lst contains
+    template_lst = blast_pdb(query_file_name, nos, nt, ic)
+    if template_lst == "No match":
+        print(str(query_name) + " No match")
     else:
         head = generate_seq(query_file_name)
-        for x in target_lst:
-            outlst = []
-            ali_code = generate_align2d(query_file_name, x)
-            generatr_model(ali_code, x, head)
-            os.system("/opt/modeller923/bin/mod9.23 align2d.py")
-            os.system("/opt/modeller923/bin/mod9.23 model.py")
-            os.system("mv " + head + ".B99990001.pdb " + head + "_" + x +
-                      ".pdb")
-            outlst.append(head + "_" + x + ".pdb")
+        outlst = []
+        wgetcode = ""
+        for x in template_lst:
+            try:
+                os.mkdir("structure")
+                os.chdir("structure")
+                #os.system("cp ../" + head + ".ali ./")
+                #os.system("mv ../"+x.split("_")[0]+".pdb ./")
+                wgetcode = os.system("wget -q https://files.rcsb.org/download/" +
+                          x.split("_")[0] + ".pdb")
+                #check if the pdb file exists
+                if str(wgetcode) == "2048":
+                    print(x+" maybe in cif format, please check it manually")
+                    os.chdir("..")
+                    break
+                else:
+                    os.system("cp ../" + head + ".ali ./")
 
-        # docking
-        py_wd = "~/MGLTools/MGLToolsPckgs/AutoDockTools/Utilities24/"
+                    ali_code = generate_align2d(query_file_name, x, head)
+                    generatr_model(ali_code, x, head)
+                    os.system("/opt/modeller923/bin/mod9.23 align2d.py")
+                    os.system("/opt/modeller923/bin/mod9.23 model.py")
+                    os.system("mv " + head + ".B99990001.pdb " + head + "_" + x +
+                              ".pdb")
+                    outlst.append(head + "_" + x + ".pdb")
+                    #os.system("rm *.py")
+                    #os.system("rm *.log")
+                    os.chdir("..")
+            except FileExistsError:
+                #os.system("mv " + x + " " + x + "_bak")
+                #os.mkdir(x)
+                os.chdir("structure")
+                #os.system("cp ../" + head + ".ali ./")
+                #os.system("cp ../"+x.split("_")[0]+".pdb ./")
+                wgetcode = os.system("wget -q https://files.rcsb.org/download/" +
+                          x.split("_")[0] + ".pdb")
+                if str(wgetcode) == "2048":
+                    print(x+" maybe in cif format, please check it manually")
+                    os.chdir("..")
+                    break
+                else:
+                    os.system("cp ../" + head + ".ali ./")
 
-        ligand = "ZEN.pdb"
+                    ali_code = generate_align2d(query_file_name, x)
+                    generatr_model(ali_code, x, head)
+                    os.system("/opt/modeller923/bin/mod9.23 align2d.py")
+                    os.system("/opt/modeller923/bin/mod9.23 model.py")
+                    os.system("mv " + head + ".B99990001.pdb " + head + "_" + x +
+                              ".pdb")
+                    outlst.append(head + "_" + x + ".pdb")
+                    os.chdir("..")
+
+            # docking
+        #py_wd = "~/MGLTools/MGLToolsPckgs/AutoDockTools/Utilities24/"
+        #ligand = "ZEN.pdb"
         for receptor in outlst:
-            docking(receptor, ligand)
+            if wgetcode != "2048":
+                os.mkdir(receptor)
+                os.chdir(receptor)
+                os.system("cp " + start_path + "/" + ligand + " ./")
+                os.system("cp ../structure/" + receptor + " ./")
+                docking(receptor, ligand)
+                os.chdir("..")
+            else:
+                print("No docking preformed!")
+    os.chdir("..")
+    return str(query_name)+" finished!"
+
+
+def ec_anno_filter(dic):
+    out_dic = {}
+    with open("EC_assignmet.out","w+") as ecf:
+        for query in dic:
+            idic = {k: v for k, v in sorted(dic[query].items(), key=lambda item: item[1], reverse=True)}
+            #print(idic)
+            eclist = list(idic.keys())
+            #print(eclist)
+            outlist = []
+            i = 0
+            #print(idic)
+            #print(len(eclist))
+
+            for i in range(len(eclist)):
+                #print("yes")
+                #print(i)
+                try:
+                    if idic[eclist[i]] > idic[eclist[i+1]] > 1:
+                        outlist.append(eclist[i])
+                        break
+                        i += 1
+                    if idic[eclist[i]] ==1:
+                        i = i + 1
+                        break
+                    if idic[eclist[i]] == idic[eclist[i+1]] > 1:
+                        outlist.append(eclist[i])
+                        i = i + 1
+                except IndexError:
+                    if idic[eclist[i]] > 1:
+                        outlist.append(eclist[i])
+                        break
+                #else:
+                    #i = i + 1
+            #print(query+ ",".join(outlist))
+            out_dic[">"+str(query)]= ",".join(outlist)
+            ecf.write(query+"\t"+",".join(outlist)+"\n")
+            #print(query+"\t"+",".join(outlist))
+    ecf.close()
+    return out_dic
+            
+            
+    
+
+def ec_assignment(querys):
+    os.system("blastp -query "+querys
+              +" -db ../database/enzyme/brenda-90 -out "+querys
+              +".out -evalue 1e-5 -outfmt 6 -num_threads "+str(nt))
+    dic = {}
+    query_list = []
+    outfile = open(querys+".out")
+    for line in outfile:
+        lst = line.split("\t")
+        qname = lst[0]
+        hname = "_".join(lst[1].split(".")[0:3])
+        if qname in query_list:
+            try:
+                dic[qname][hname] += 1
+            except KeyError:
+                dic[qname][hname] = 1
+        else:
+            dic[qname] = {hname:1}
+            query_list.append(qname)
+    return dic
+    #return sorted(dic['tr|Q8NKB0|Q8NKB0_BIOOC'], key=dic['tr|Q8NKB0|Q8NKB0_BIOOC'].get, reverse=True)
+
+ec_dic = ec_assignment(infile)
+seqdic = maindic(infile)
+
+print("file read!")
+out_dic = ec_anno_filter(ec_dic)#{">query":"ec_number"}
+for query_name in out_dic:
+    ec_list = out_dic[query_name].split(",")
+    if EC_number in ec_list:
+        run_(query_name)
