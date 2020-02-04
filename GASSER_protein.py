@@ -1,4 +1,4 @@
-#GASSER for proteins 20200203 build
+#GASSER for proteins 20200205 build
 # srtucture_prediction
 print("""
         #######################################################
