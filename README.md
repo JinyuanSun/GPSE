@@ -1,6 +1,5 @@
-# GASSER
-Genome scAle Substrate Specific Enzyme pRediction
-
+# GPSE
+Genome-scaled Prediction of Substrate-specific Enzymes
 The workflow:
 
 ![img](/img/GASSER.svg)
