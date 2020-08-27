@@ -32,3 +32,5 @@ optional arguments:
   -evalue EVALUE  E-Value cutoff for structure template, default is 1e-5
   -ic IC          the Identity Cutoff for structure prediction, default is 30
 ```
+##### Reference:  
+Sun J, Xia Y and Ming D (2020) Whole-Genome Sequencing and Bioinformatics Analysis of Apiotrichum mycotoxinivorans: Predicting Putative Zearalenone-Degradation Enzymes. Front. Microbiol. 11:1866. doi: 10.3389/fmicb.2020.01866
