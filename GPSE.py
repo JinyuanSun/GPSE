@@ -10,7 +10,7 @@ print(
         #                                                       #
         # Genome-scale Prediction of Substrate-specific Enzymes #
         #                                                       #
-        #  Author: Sun Jinyuan, Ming Dengming*                  #
+        #  Author: Sun Jinyuan, Xia Yan, Ming Dengming*                  #
         #                                                       #
         #########################################################
         
