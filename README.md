@@ -1,5 +1,8 @@
 # GPSE
 Genome-scaled Prediction of Substrate-specific Enzymes
+
+** With breadkthrough made by AlphaFold2, this repo is about to be updated as a "plugin" of AlphaFold, for more accurate enzyme discovery! **
+
 The workflow:
 
 ![img](/img/GASSER.svg)
